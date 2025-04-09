@@ -1,4 +1,5 @@
 import java.util.NoSuchElementException;
+import java.util.concurrent.locks.ReentrantLock;
 
 class myHashMap {
     public static class MyHashMap<K, V> {
@@ -94,7 +95,7 @@ class myHashMap {
 
         }
 
-        public void remove(K key){
+        public boolean remove(K key){
             if (key == null) {
                 throw new NullPointerException("Key cannot be null");
             }
@@ -110,16 +111,49 @@ class myHashMap {
                     }
                     current.value = null;
                     count--;
-                    return;
+                    return true;
                 }
                 previous = current;
                 current = current.next;
             }
+            return false;
         }
 
         private int getBucketIndex(K key){
             int hash = key == null ? 0 : key.hashCode();
             return (hash & 0x7FFFFFFF) % capacity;
+        }
+
+        public static class ThreadSafeHashMap<K, V> {
+            private final MyHashMap<K, V> map = new MyHashMap<>();
+            private final ReentrantLock lock = new ReentrantLock();
+
+            public void put(K key, V value) {
+                lock.lock();
+                try {
+                    map.put(key, value);
+                } finally {
+                    lock.unlock();
+                }
+            }
+
+            public V get(K key) {
+                lock.lock();
+                try {
+                    return map.get(key);
+                } finally {
+                    lock.unlock();
+                }
+            }
+
+            public boolean remove(K key) {
+                lock.lock();
+                try {
+                    return map.remove(key);
+                } finally {
+                    lock.unlock();
+                }
+            }
         }
     }
 
@@ -175,5 +209,12 @@ class myHashMap {
 
         System.out.println("Key 1: " + collisionMap.get(1));
         System.out.println("Key 17: " + collisionMap.get(17));
+        // Создание потокобезопасного экземляра HashMap
+        MyHashMap.ThreadSafeHashMap<String, Integer> map1 = new MyHashMap.ThreadSafeHashMap<>();
+        map1.put("one", 1);
+        map1.put("two", 2);
+        System.out.println("Get 'one': " + map1.get("one"));
+        System.out.println("Get 'two': " + map1.get("two"));
+
     }
 }
